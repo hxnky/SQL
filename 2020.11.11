@@ -1,0 +1,186 @@
+-- 2020.11.11
+
+-- join
+
+-- cross join : 조건 없이 테이블과 테이블을 붙여준다.
+select * from emp, dept;
+
+-- ANSI JOIN : CROSS JOIN
+select * from emp cross join dept;
+
+-- ANSI -> T1 INNER JOIN T2 ON 조인의 조건
+select * from emp inner join dept on emp.deptno = dept.deptno;
+
+-- ANSI INNER JOIN
+select * from emp join dept using(deptno); -- 공통 컬럼은 하나만 가지게 해준다. 공통 컬럼을 구별할 필요가 없다.
+
+-- ANSI OUTER JOIN
+-- (LEFT | RIGHT | FULL ) OUTER JOIN
+select e.name, e.mgr, m.ename
+from emp e left outer join emp m 
+on e.mgr = m.empno;
+
+-- 회원, 구매
+-- CUSTOMER, ORDERS
+select * from customer;
+select * from orders order by cutid;
+
+select * from customer c, orders o
+where c.cusid = o.cusid(+);
+
+-- 회원별 구매 횟수
+select c.name, count(o.orderid), sum(o.price), round(avg(o.saleprice))
+from customer c, orders o
+where c.cusid = o.cusid(+)
+group by c.name;
+
+
+
+-- NATURAL JOIN : 동일 컬럼의 조인 조건을 생략, 같은 이름의 컬럼은 하나씩
+select ename, deptno, dname from emp natural join dept;
+
+-- Equl JOIN
+select * from emp, dept where emp.deptno = dept.deptno;
+
+-- SCOTT의 사원번호와 이름, 부서이름, 지역 출력
+select empno, ename, dname, loc from emp, dept 
+where ename = 'SCOTT' and emp.deptno = dept.deptno;
+
+-- 테이블의 이름이 긴 경우 별칭 사용
+select e.empno, e.ename, d.dname, d.loc from emp e, dept d 
+where e.ename = 'SCOTT' and e.deptno = d.deptno;
+
+-- NON EQUL JOIN : 동등 비교가 아닌 비교연산이 가능
+
+-- CROSS JOIN : 조건 필요 / 특정 범위 안에 포함되는지
+select * from emp e, salgrade s
+where e.sal between s.losal and s.hisal;
+
+select * from salgrade;
+
+-- SELF JOIN : 자기 자신 JOIN
+-- SMITH 의 매니저 이름은 무엇인가
+select e.ename, e.mgr, m.ename from emp e, emp m
+where e.mgr = m.empno and ename = 'SMITH';
+
+select ename from emp where empno = 7902;
+
+-- OUTER JOIN : 정보가 부족해도 출력하도록하는 JOIN
+select e.ename, e.mgr, m.ename from emp e, emp m
+where e.mgr = m.empno(+);
+
+
+--===============================================
+
+-- 서브쿼리
+-- 스칼라 부속질의  - SELECT 부속질의, 단일 행 단일 열
+-- 인라인 뷰       - FROM 부속질의, 복합 행 복합 열
+-- 중첩질의        - WHERE 부속질의, 단일 열, 단순비교 -> 단일 행, 집합 비교 -> 복합 행
+
+-- 중첩 질의 : 단순 비교
+-- 평균 급여(sub query)보다 더 많은 급여를 받는 사원을 출력
+select avg(sal) from emp;
+
+select * from  emp where sal > (select avg(sal) from emp);
+
+-- SCOTT 사원의 같은 부서에 근무하는 사원의 리스트를 출력
+ select deptno from emp where ename = 'SCOTT'; -- 서브 쿼리
+ 
+ select ename, deptno from emp 
+ where deptno=(select deptno from emp where ename = 'SCOTT'); -- SCOTT이 소속된 부서 번호
+
+-- 30번 소속 사원들 중에서 급여를 가장 많이 받는 사원보다 더 많은 급여를 받는
+-- 사람의 이름, 급여를 출력하는 쿼리문 작성
+select ename, sal from emp 
+where sal > ANY(select sal from emp where deptno = 30);
+select max(sal) from emp where deptno = 30;
+
+-- ROWNUM : 오라클 내에서 처리하는 가상의 컬럼 insert된 순서대로 출력됨
+select rownum, empno, ename, hiredate
+from emp
+where rownum < 4
+order by hiredate;
+
+select rownum, empno, ename, hiredate from emp order by hiredate;
+
+select rownum, empno, ename, hiredate 
+from (select rownum, empno, ename, hiredate from emp order by hiredate desc)   -- 인라인 뷰
+where rownum<4; -- 가장 최근 입사한 3명
+
+-- 가장 월급을 많이 받는 3명 출력
+select rownum, ename, sal from emp order by sal desc;    -- 월급을 내림차순으로 정렬
+
+select rownum, ename, sal 
+from (select rownum, ename, sal from emp order by sal desc)
+where rownum < 4;
+
+select name from customer where custid =1;
+
+-- 스칼라 부속질의 : select절 프리젠테이션 영역에 쓸 수 있는 부속질의, 단일행, 단일열, 단일값의 결과만 나와야한다.
+
+select custid, (select name from customer where customer.custid=orders.custid)
+, saleprice, orderdate from orders;
+
+-- 마당서점의 고객별-> group by
+-- 판매액을 보이시오 -> orders
+-- 결과는 고객 이름과 고객별 판매액을 출력
+-- JOIN 사용
+select c.custid, c.name, sum(o.saleprice) 
+from customer c, orders o 
+where c.custid = o.custid(+)
+group by c.custid, c.name
+order by sum(o.saleprice);
+
+-- 서브쿼리 사용
+select o.custid, (select name from customer c where c.custid = o.custid), sum(o.saleprice)
+from orders o
+group by o.custid
+;
+
+select custid, name
+from customer
+where custid<=2
+;
+
+-- 인라인 뷰 : from절 이후에 들어가는 서브 쿼리, 가상 테이블 형태로 처리
+select c.name, sum(o.saleprice), avg(o.saleprice) 
+from orders o, (select custid, name
+                from customer
+                where custid<=2) c
+where o.custid=c.custid;
+
+select avg(saleprice) from orders;
+select * from orders;
+-- 평균 주문금액 이하의 주문에 대해서 주문 번호와 금액을 보이시오.
+select orderid, saleprice from orders 
+where saleprice<=(select avg(saleprice) from orders);
+
+-- 각 고객의 평균 주문금액보다 큰 금액의 주문 내역에 대해서 주문번호, 고객번호, 금액을 보이시오
+select avg(saleprice) from orders where custid = 1;
+
+select orderid, o1.custid, saleprice
+from orders o1
+where saleprice > 
+(select avg(saleprice) from orders o2 where o2.custid=o1.custid); -- custid=1이면 1번 고객의 평균과 비교해서 크 주문 금액만 출력
+
+select * from customer where address like '%대한민국%';
+-- 대한민국에 거주하는 고객에게 판해만 도서의 퐁 판매액을 구하시오
+select sum(saleprice) from orders
+where custid in (select custid from customer where address like '%대한민국%')
+;
+
+-- 3번 고객이 주문한 도서의 최고 금액보다 더 비싼 도서를 구입하
+-- 주문의 주문번호와 금액을 보이시오
+select max(saleprice) from oeders where custud = 3;
+
+select orderid, saleprive
+from orders
+where saleprice (select saleprice from orders from orders where custid=3)
+
+-- EXISTS 연산자로 대한민국에 거주하는 고객에게 판매한 도서의 총 판매액을 고르시오
+swlect * from customer where address like('%대한민숫%) and o.custi = c.cuid)
+;
+
+select sum(salepir=igr
+
+
